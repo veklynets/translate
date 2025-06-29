@@ -1,0 +1,1 @@
+Whisper для розпізнавання, Argos Translate для перекладу, Piper для озвучення).
