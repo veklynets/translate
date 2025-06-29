@@ -129,12 +129,12 @@ class TerminalTranslator:
         self.last_english_text: Optional[str] = None
         self.log_file_path: Optional[str] = None
         self.commands = {
-            self.cfg.CMD_HELP: self._show_help,
-            self.cfg.CMD_SOUND: self._speak_last_text,
-            self.cfg.CMD_OCR: self._handle_ocr_and_translate,
-            self.cfg.CMD_SET_MONITOR: self._select_monitor_interactive,
-            self.cfg.CMD_SET_SOUND: self._toggle_sound,
-            self.cfg.CMD_EXIT: self._exit,
+            self.cfg.CMD_HELP.lower(): self._show_help,
+            self.cfg.CMD_SOUND.lower(): self._speak_last_text,
+            self.cfg.CMD_OCR.lower(): self._handle_ocr_and_translate,
+            self.cfg.CMD_SET_MONITOR.lower(): self._select_monitor_interactive,
+            self.cfg.CMD_SET_SOUND.lower(): self._toggle_sound,
+            self.cfg.CMD_EXIT.lower(): self._exit,
         }
 
     @staticmethod
@@ -232,13 +232,13 @@ class TerminalTranslator:
             sct_img = sct.grab(bbox)
             img = Image.frombytes('RGB', sct_img.size, sct_img.rgb)
         text = pytesseract.image_to_string(img, lang='eng+ukr').strip()
-        print(f"{self.cfg.COLOR_INFO}Розпізнано: {text}")
+        print(f"{self.cfg.COLOR_INFO} {text}")
         self._log_event(f"OCR RESULT: {text}")
         return text
 
     def _show_help(self):
         print(f"\n{self.cfg.COLOR_RESULT}--- Перекладач (UA ↔ EN) ---")
-        print(f"{self.cfg.COLOR_NEUTRAL}Напрямок: авто-визначення за розкладкою. Примусово: 'UA#: ...' або 'EN#: ...'")
+        print(f"{self.cfg.COLOR_NEUTRAL}Напрямок перекладу визначається автоматично за розкладкою клавіатури.")
         commands_desc = {
             self.cfg.CMD_SOUND: "озвучити останній англійський текст.",
             self.cfg.CMD_OCR: "розпізнати текст з екрану.",
@@ -319,6 +319,7 @@ class TerminalTranslator:
                     if prev_b1_state == 'B1D' and b1 == 'B1U':
                         sys.stdout.write(f'\r{" " * (len(last_prompt) + len(buffer))}\r')
                         print(f"{self.cfg.COLOR_NEUTRAL}[Джойстик] -> {self.cfg.CMD_SOUND}")
+                        self._speak_last_text()
                         last_prompt = ''
                     prev_b1_state = b1
                 
@@ -328,14 +329,18 @@ class TerminalTranslator:
 
                 prompt = self._get_prompt()
                 if prompt != last_prompt:
-                    sys.stdout.write(f'\r{" " * (len(last_prompt) + len(buffer))}\r{prompt}{buffer}')
+                    sys.stdout.write(f'\r{" " * len(last_prompt)}\r{prompt}{buffer}')
                     sys.stdout.flush()
                     last_prompt = prompt
 
                 if msvcrt.kbhit():
-                    # --- ОСНОВНА ЗМІНА ТУТ ---
-                    # Використовуємо getwch() для зчитування без відлуння
                     char = msvcrt.getwch()
+
+                    # --- ДОДАНО: ігнорувати спец. символи (наприклад, стрілки) ---
+                    if char in ('\x00', '\xe0'):
+                        # Зчитати наступний символ (коди спец. клавіш, наприклад, стрілки)
+                        msvcrt.getwch()
+                        continue
 
                     if char in ('\r', '\n'):
                         sys.stdout.write('\n')
@@ -343,26 +348,24 @@ class TerminalTranslator:
                         buffer = ''
                         last_prompt = ''
                         if user_input:
-                            if user_input.upper() in self.commands: self.commands[user_input.upper()]()
-                            elif ":" in user_input and (user_input.upper().startswith("UA#:") or user_input.upper().startswith("EN#:")):
-                                prefix, payload = user_input.split(":", 1)
-                                target = 'en' if prefix.upper() == "UA#" else 'uk'
-                                self._process_translation(payload.strip(), forced_target_lang=target)
-                            else: self._process_translation(user_input)
+                            # --- Команди не залежать від регістру ---
+                            cmd = user_input.lower()
+                            if cmd in self.commands:
+                                self.commands[cmd]()
+                            else:
+                                self._process_translation(user_input)
                     
-                    elif char == '\x08':  # Backspace
+                    elif char == '\x08':
                         if buffer:
                             buffer = buffer[:-1]
-                            # Вручну стираємо символ з консолі: назад, пробіл, назад
                             sys.stdout.write('\b \b')
                             sys.stdout.flush()
                     
-                    elif char == '\x03':  # Ctrl+C
+                    elif char == '\x03':
                         raise KeyboardInterrupt
                     
-                    else:  # Звичайний символ
+                    else:
                         buffer += char
-                        # Вручну друкуємо символ в консоль
                         sys.stdout.write(char)
                         sys.stdout.flush()
                 
