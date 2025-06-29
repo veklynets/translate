@@ -105,12 +105,10 @@ class ScreenAreaSelector:
         print("Виділіть область екрану...")
         self._root.mainloop()
         self._root.destroy()
-
         x1 = min(self._coords["start_x"], self._coords["end_x"])
         y1 = min(self._coords["start_y"], self._coords["end_y"])
         x2 = max(self._coords["start_x"], self._coords["end_x"])
         y2 = max(self._coords["start_y"], self._coords["end_y"])
-
         if (x2 - x1) < 10 or (y2 - y1) < 10:
             print(f"{Config.COLOR_WARNING}Область не виділена або занадто мала.")
             return None
@@ -141,36 +139,28 @@ class TerminalTranslator:
 
     @staticmethod
     def _get_keyboard_language() -> Optional[str]:
-        if not WINDOWS_API_AVAILABLE:
-            return None
+        if not WINDOWS_API_AVAILABLE: return None
         try:
             hwnd = user32.GetForegroundWindow()
             thread_id = user32.GetWindowThreadProcessId(hwnd, None)
             layout_handle = user32.GetKeyboardLayout(thread_id)
             lang_id = layout_handle & 0xFFFF
-            if lang_id == Config.LANG_ID_UKRAINIAN:
-                return 'uk'
-            if lang_id in [Config.LANG_ID_ENGLISH_US, Config.LANG_ID_ENGLISH_UK]:
-                return 'en'
+            if lang_id == Config.LANG_ID_UKRAINIAN: return 'uk'
+            if lang_id in [Config.LANG_ID_ENGLISH_US, Config.LANG_ID_ENGLISH_UK]: return 'en'
             return None
-        except Exception:
-            return None
+        except Exception: return None
 
     def _setup_dependencies(self) -> bool:
         if 'GOOGLE_APPLICATION_CREDENTIALS' not in os.environ:
             print(f"{self.cfg.COLOR_ERROR}ПОМИЛКА: Немає ключа GOOGLE_APPLICATION_CREDENTIALS.")
             return False
-        
         pytesseract.pytesseract.tesseract_cmd = self.cfg.TESSERACT_PATH
         if not os.path.exists(self.cfg.TESSERACT_PATH):
             print(f"{self.cfg.COLOR_WARNING}ПОПЕРЕДЖЕННЯ: Tesseract не знайдено: {self.cfg.TESSERACT_PATH}")
-        
-        try:
-            self.translate_client = translate.Client()
+        try: self.translate_client = translate.Client()
         except Exception as e:
             print(f"{self.cfg.COLOR_ERROR}Не вдалося ініціалізувати Google Translate: {e}")
             return False
-        
         pygame.init()
         return True
 
@@ -228,31 +218,19 @@ class TerminalTranslator:
                 print(f"{self.cfg.COLOR_WARNING}Невірний вибір, використано монітор 1.")
                 self.selected_monitor = monitors[0]
                 self.selected_monitor_idx = 1
-        
         print(f"{self.cfg.COLOR_NEUTRAL}Обрано монітор: {self.selected_monitor_idx}")
         self._log_event(f"SET_MONITOR: {self.selected_monitor}")
 
     def _grab_and_ocr(self) -> Optional[str]:
-        if not self.selected_monitor:
-            self._select_monitor_interactive()
-        if not self.selected_monitor:
-            return None
-        
+        if not self.selected_monitor: self._select_monitor_interactive()
+        if not self.selected_monitor: return None
         area = ScreenAreaSelector(self.selected_monitor).select_area()
-        if not area:
-            return None
-        
+        if not area: return None
         x1, y1, x2, y2 = area
-        bbox = {
-            "left": self.selected_monitor['left'] + x1,
-            "top": self.selected_monitor['top'] + y1,
-            "width": x2 - x1,
-            "height": y2 - y1
-        }
+        bbox = {"left": self.selected_monitor['left'] + x1, "top": self.selected_monitor['top'] + y1, "width": x2 - x1, "height": y2 - y1}
         with mss.mss() as sct:
             sct_img = sct.grab(bbox)
             img = Image.frombytes('RGB', sct_img.size, sct_img.rgb)
-        
         text = pytesseract.image_to_string(img, lang='eng+ukr').strip()
         print(f"{self.cfg.COLOR_INFO}Розпізнано: {text}")
         self._log_event(f"OCR RESULT: {text}")
@@ -278,12 +256,10 @@ class TerminalTranslator:
         else:
             print(f"{self.cfg.COLOR_WARNING}Немає тексту для озвучення.")
 
-    # ОСЬ ТУТ БУЛА ПОМИЛКА - ВИПРАВЛЕНО ВІДСТУП
     def _handle_ocr_and_translate(self):
         self._log_event("COMMAND: SCR#")
         ocr_text = self._grab_and_ocr()
-        if ocr_text:
-            self._process_translation(ocr_text)
+        if ocr_text: self._process_translation(ocr_text)
 
     def _toggle_sound(self):
         self.sound_enabled = not self.sound_enabled
@@ -293,19 +269,16 @@ class TerminalTranslator:
     def _get_prompt(self) -> str:
         mon_str = f"D{self.selected_monitor_idx}" if self.selected_monitor_idx else "D?"
         sound_str = "S" if self.sound_enabled else "M"
-        
         if self.last_target_lang == 'en':
             dir_str, color = "УКР", self.cfg.COLOR_PROMPT_UA
         elif self.last_target_lang == 'uk':
             dir_str, color = "ENG", self.cfg.COLOR_PROMPT_EN
         else:
             return f"{self.cfg.COLOR_WARNING}Встановіть розкладку (UA/EN): "
-        
         return f"{color}[{mon_str}:{sound_str}] {dir_str}#> {Style.RESET_ALL}"
 
     def _exit(self):
-        if self.joystick_handler:
-            self.joystick_handler.stop()
+        if self.joystick_handler: self.joystick_handler.stop()
         print(f"\n{self.cfg.COLOR_RESULT}До побачення!")
         sys.exit(0)
 
@@ -314,23 +287,18 @@ class TerminalTranslator:
         if not target_lang:
             print(f"{self.cfg.COLOR_WARNING}Не визначено напрямок перекладу.")
             return
-        
         translated_text = self._translate_text(text, target_lang)
         if translated_text:
             print(f"{self.cfg.COLOR_RESULT}-> {translated_text}{Style.RESET_ALL}")
             is_to_english = target_lang == 'en'
             self.last_english_text = translated_text if is_to_english else text
-            if self.sound_enabled:
-                self._speak_text(self.last_english_text, 'en')
+            if self.sound_enabled: self._speak_text(self.last_english_text, 'en')
 
     def run(self):
-        if not self._setup_dependencies():
-            return
-        
+        if not self._setup_dependencies(): return
         self._setup_logging()
         self._select_monitor_interactive()
         self._show_help()
-        
         if not WINDOWS_API_AVAILABLE:
             print(f"{self.cfg.COLOR_ERROR}Робота неможлива без Windows API.")
             return
@@ -341,9 +309,7 @@ class TerminalTranslator:
         except Exception as e:
             print(f"{self.cfg.COLOR_WARNING}JoystickHandler не ініціалізовано: {e}")
 
-        buffer = ''
-        last_prompt = ''
-        prev_b1_state = None
+        buffer = ''; last_prompt = ''; prev_b1_state = None
         
         while True:
             try:
@@ -351,57 +317,62 @@ class TerminalTranslator:
                     state = self.joystick_handler.state
                     b1 = state.get('B1')
                     if prev_b1_state == 'B1D' and b1 == 'B1U':
-                        sys.stdout.write(f'\r{" " * len(last_prompt)}\r')
+                        sys.stdout.write(f'\r{" " * (len(last_prompt) + len(buffer))}\r')
                         print(f"{self.cfg.COLOR_NEUTRAL}[Джойстик] -> {self.cfg.CMD_SOUND}")
-                        self._speak_last_text()
-                        last_prompt = ''  # Скинути, щоб prompt перемалювався
+                        last_prompt = ''
                     prev_b1_state = b1
                 
                 detected_lang = self._get_keyboard_language()
-                if detected_lang == 'uk':
-                    self.last_target_lang = 'en'
-                elif detected_lang == 'en':
-                    self.last_target_lang = 'uk'
+                if detected_lang == 'uk': self.last_target_lang = 'en'
+                elif detected_lang == 'en': self.last_target_lang = 'uk'
 
                 prompt = self._get_prompt()
                 if prompt != last_prompt:
-                    sys.stdout.write(f'\r{" " * len(last_prompt)}\r{prompt}')
+                    sys.stdout.write(f'\r{" " * (len(last_prompt) + len(buffer))}\r{prompt}{buffer}')
                     sys.stdout.flush()
                     last_prompt = prompt
 
                 if msvcrt.kbhit():
-                    char = msvcrt.getwche()
+                    # --- ОСНОВНА ЗМІНА ТУТ ---
+                    # Використовуємо getwch() для зчитування без відлуння
+                    char = msvcrt.getwch()
+
                     if char in ('\r', '\n'):
-                        print()
+                        sys.stdout.write('\n')
                         user_input = buffer.strip()
                         buffer = ''
                         last_prompt = ''
                         if user_input:
-                            # Обробка команд
-                            if user_input.upper() in self.commands:
-                                self.commands[user_input.upper()]()
+                            if user_input.upper() in self.commands: self.commands[user_input.upper()]()
                             elif ":" in user_input and (user_input.upper().startswith("UA#:") or user_input.upper().startswith("EN#:")):
                                 prefix, payload = user_input.split(":", 1)
                                 target = 'en' if prefix.upper() == "UA#" else 'uk'
                                 self._process_translation(payload.strip(), forced_target_lang=target)
-                            else:
-                                self._process_translation(user_input)
+                            else: self._process_translation(user_input)
+                    
                     elif char == '\x08':  # Backspace
-                        buffer = buffer[:-1]
+                        if buffer:
+                            buffer = buffer[:-1]
+                            # Вручну стираємо символ з консолі: назад, пробіл, назад
+                            sys.stdout.write('\b \b')
+                            sys.stdout.flush()
+                    
                     elif char == '\x03':  # Ctrl+C
                         raise KeyboardInterrupt
-                    else:
+                    
+                    else:  # Звичайний символ
                         buffer += char
+                        # Вручну друкуємо символ в консоль
+                        sys.stdout.write(char)
+                        sys.stdout.flush()
                 
                 pygame.time.wait(20)
 
-            except (KeyboardInterrupt, EOFError):
-                self._exit()
+            except (KeyboardInterrupt, EOFError): self._exit()
             except Exception as e:
                 print(f"\n{self.cfg.COLOR_ERROR}Критична помилка: {e}")
                 self._log_event(f"ERROR: {e}")
                 buffer = ''
-
 
 if __name__ == "__main__":
     translator = TerminalTranslator(config=Config())
