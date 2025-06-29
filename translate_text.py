@@ -312,7 +312,6 @@ class TerminalTranslator:
         self._setup_logging()
         self._select_monitor_interactive()
 
-        # ОПТИМІЗАЦІЯ: Спрощений та більш надійний цикл обробки команд
         while True:
             try:
                 detected_lang = self._get_keyboard_language()
@@ -329,16 +328,26 @@ class TerminalTranslator:
                     self._set_translation_direction(target_lang)
                     self._process_translation(payload.strip())
                     continue
-                
-                # Пріоритет 2: Перевірка на стандартні команди
-                potential_cmd = user_input.upper()
-                if not potential_cmd.endswith('#'): potential_cmd += '#'
-                
-                if potential_cmd in self.commands:
-                    self.commands[potential_cmd]()
+
+                # Пріоритет 2: Перевірка на стандартні команди (тільки якщо повний збіг)
+                if user_input.upper() in self.commands:
+                    self.commands[user_input.upper()]()
                     continue
 
-                # Пріоритет 3: Якщо це не команда - перекладаємо
+                # Пріоритет 3: Якщо це схоже на команду (одне слово + #), але не зарезервовано — помилка
+                stripped = user_input.strip()
+                cmd_part = stripped.split('#', 1)[0]
+                if (
+                    len(stripped) > 1 and
+                    '#' in stripped and
+                    stripped.upper().endswith('#') and
+                    cmd_part.replace('_', '').isalnum() and
+                    stripped.upper() not in self.commands
+                ):
+                    print(f"{Fore.RED}Невідома команда: {cmd_part}#")
+                    continue
+
+                # Пріоритет 4: Якщо це не команда - перекладаємо
                 self._process_translation(user_input)
 
             except (KeyboardInterrupt, EOFError):
