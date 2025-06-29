@@ -36,8 +36,9 @@ else:
     print(f"{Fore.YELLOW}Попередження: Автоматичне визначення розкладки працює тільки на Windows.")
 
 # --- КОНФІГУРАЦІЯ ТА КОНСТАНТИ ---
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TESSERACT_PATH = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-LOG_DIR = "logs"
+LOG_DIR = os.path.join(SCRIPT_DIR, "logs")
 # ОПТИМІЗАЦІЯ: "Магічні числа" винесено в константи
 LANG_ID_UKRAINIAN = 0x0422
 LANG_ID_ENGLISH_US = 0x0409
@@ -141,7 +142,7 @@ class TerminalTranslator:
 
     @staticmethod
     def _speak_text(text: str, lang: str):
-        temp_audio_file = "temp_audio.mp3"
+        temp_audio_file = os.path.join(SCRIPT_DIR, "temp_audio.mp3")
         try:
             tts = gTTS(text=text, lang=lang)
             tts.save(temp_audio_file)
