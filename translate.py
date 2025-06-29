@@ -193,7 +193,7 @@ class TerminalTranslator:
                 while pygame.mixer.music.get_busy():
                     pygame.time.Clock().tick(10)
         except Exception as e:
-            print(f"\n{self.cfg.COLOR_ERROR}--- Помилка озвучення ---: {e}")
+            print(f"\n{Config.COLOR_ERROR}--- Помилка озвучення ---: {e}")
 
     def _select_monitor_interactive(self):
         with mss.mss() as sct:
