@@ -1,16 +1,11 @@
-# translator.py
-# -*- coding: utf-8 -*-
-# Для роботи програми потрібно встановити додаткові бібліотеки:
-# pip install google-cloud-translate gTTS pygame pytesseract pillow mss colorama pyjoystick
-
 import os
 import sys
-import contextlib
 import datetime
 import io
 import shutil
 import tkinter as tk
 from typing import Dict, Optional, Tuple
+import threading
 
 import mss
 import pygame
@@ -19,9 +14,6 @@ from PIL import Image
 from colorama import Fore, Style, init as colorama_init
 from gtts import gTTS
 from google.cloud import translate_v2 as translate
-
-# Імпортуємо ваш клас з файлу joustick.py
-from joustick import JoystickHandler
 
 # --- ЛОГІКА ВИЗНАЧЕННЯ РОЗКЛАДКИ (тільки для Windows) ---
 IS_WINDOWS = os.name == 'nt'
@@ -120,7 +112,7 @@ class TerminalTranslator:
     def __init__(self, config: Config):
         colorama_init(autoreset=True)
         self.cfg = config
-        self.joystick_handler = None
+        self.sound_flag = threading.Event()  # ДОДАНО: подія для SOUND#
         self.translate_client: Optional[translate.Client] = None
         self.sound_enabled: bool = False
         self.selected_monitor: Optional[Dict] = None
@@ -303,26 +295,18 @@ class TerminalTranslator:
             print(f"{self.cfg.COLOR_ERROR}Робота неможлива без Windows API.")
             return
 
-        try:
-            self.joystick_handler = JoystickHandler()
-            self.joystick_handler.start()
-        except Exception as e:
-            print(f"{self.cfg.COLOR_WARNING}JoystickHandler не ініціалізовано: {e}")
-
-        buffer = ''; last_prompt = ''; prev_b1_state = None
+        buffer = ''; last_prompt = ''
         
         while True:
             try:
-                if self.joystick_handler:
-                    state = self.joystick_handler.state
-                    b1 = state.get('B1')
-                    if prev_b1_state == 'B1D' and b1 == 'B1U':
-                        sys.stdout.write(f'\r{" " * (len(last_prompt) + len(buffer))}\r')
-                        print(f"{self.cfg.COLOR_NEUTRAL}[Джойстик] -> {self.cfg.CMD_SOUND}")
-                        self._speak_last_text()
-                        last_prompt = ''
-                    prev_b1_state = b1
-                
+                # --- ДОДАНО: реагування на SOUND# з джойстика ---
+                if self.sound_flag.is_set():
+                    sys.stdout.write(f'\r{" " * (len(last_prompt) + len(buffer))}\r')
+                    print(f"{self.cfg.COLOR_NEUTRAL}[Джойстик] -> {self.cfg.CMD_SOUND}")
+                    self._speak_last_text()
+                    last_prompt = ''
+                    self.sound_flag.clear()
+
                 detected_lang = self._get_keyboard_language()
                 if detected_lang == 'uk': self.last_target_lang = 'en'
                 elif detected_lang == 'en': self.last_target_lang = 'uk'
@@ -371,7 +355,8 @@ class TerminalTranslator:
                 
                 pygame.time.wait(20)
 
-            except (KeyboardInterrupt, EOFError): self._exit()
+            except (KeyboardInterrupt, EOFError):
+                self._exit()
             except Exception as e:
                 print(f"\n{self.cfg.COLOR_ERROR}Критична помилка: {e}")
                 self._log_event(f"ERROR: {e}")
@@ -380,3 +365,4 @@ class TerminalTranslator:
 if __name__ == "__main__":
     translator = TerminalTranslator(config=Config())
     translator.run()
+
