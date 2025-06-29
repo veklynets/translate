@@ -26,7 +26,7 @@ class logic_stage():
         self.screen_position = screen_position
         self.start_time = time.time() * 1000
         self.last_key = None
-        self.app = LogicAudioController()
+
         
 
     def run_logic(self):
@@ -43,26 +43,7 @@ class logic_stage():
             if self.screen_position is None:
                 print("❌ screen_position not set! only for debug")
                 return  
-        
-            # default U (or Z) -> D (or U/D or L/R)
-            if JoystickButton['LED_Microphone']+'R' == self.joystick_handler.state.get(JoystickButton['LED_Microphone']):
-                swich_LED_Microphone_static = True
-            if JoystickButton['LED_Microphone']+'Z' == self.joystick_handler.state.get(JoystickButton['LED_Microphone']) and swich_LED_Microphone_static:
-                swich_LED_Microphone_static_mode_ON = not swich_LED_Microphone_static_mode_ON
-                swich_LED_Microphone_static = False
 
-            if swich_LED_Microphone_static_mode_ON :
-                if self.app.send_LogicAudioController('Microphone status') == "Muted":
-                    self.app.send_LogicAudioController('Microphone unmute')
-            else:
-                mic_webex_state = self.joystick_handler.state.get(JoystickButton['LED_Microphone'])
-                if mic_webex_state == JoystickButton['LED_Microphone'] + 'L' and swich_LED_Microphone_dynamic:
-                    swich_LED_Microphone_dynamic = False
-                    self.app.send_LogicAudioController('Microphone unmute')
-                elif mic_webex_state == JoystickButton['LED_Microphone'] + 'Z':
-                    swich_LED_Microphone_dynamic = True
-                    if self.app.send_LogicAudioController('Microphone status') == "Voice":
-                        self.app.send_LogicAudioController('Microphone mute')
 
             if JoystickButton['copy_to_AI_translation']+'D' == self.joystick_handler.state.get(JoystickButton['copy_to_AI_translation']):
                 from pynput.keyboard import Key, Controller   # import keyboard - lite analog of pynput
