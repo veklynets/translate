@@ -15,6 +15,8 @@ import tkinter as tk
 from google.cloud import translate_v2 as translate
 from gtts import gTTS
 from colorama import init as colorama_init, Fore, Style
+from joustick import JoystickHandler
+
 
 # --- РОЗШИРЕНА ЛОГІКА ВИЗНАЧЕННЯ РОЗКЛАДКИ (тільки для Windows) ---
 IS_WINDOWS = os.name == 'nt'
@@ -312,15 +314,75 @@ class TerminalTranslator:
         if not self._setup_dependencies(): return
         self._setup_logging()
         self._select_monitor_interactive()
+        
+        handler = None
+        prev_b1_state = None
+        try:
+            handler = JoystickHandler()
+            handler.start()
+            joystick = handler
+        except Exception as e:
+            print(f"{Fore.YELLOW}JoystickHandler не ініціалізовано: {e}")
+            joystick = None
 
+        # --- ДОДАНО: неблокуючий цикл для джойстика і вводу ---
+        import msvcrt
+        import time
+
+        buffer = ''
+        last_prompt = None  # ДОДАНО: для контролю дублювання prompt
         while True:
             try:
+                # --- Джойстик SOUND# ---
+                if joystick is not None and hasattr(joystick, "state"):
+                    state = joystick.state
+                    if state:
+                        b1 = state.get('B1')
+                        if prev_b1_state == 'B1D' and b1 == 'B1U':
+                            print(f"{Fore.LIGHTBLUE_EX}[Джойстик] SOUND#")
+                            self._speak_last_text()
+                        prev_b1_state = b1
+
                 detected_lang = self._get_keyboard_language()
                 if detected_lang == 'uk': self._set_translation_direction('en')
                 elif detected_lang == 'en': self._set_translation_direction('uk')
 
-                user_input = input(self._get_prompt()).strip()
-                if not user_input: continue
+                prompt = self._get_prompt()
+                # --- Не друкувати prompt якщо не визначено напрямок ---
+                if "Встановіть розкладку клавіатури" in prompt:
+                    if buffer == '' and last_prompt != prompt:
+                        print(prompt, end='', flush=True)
+                        last_prompt = prompt
+                    time.sleep(0.1)
+                    continue
+
+                # --- ДОДАНО: не друкувати prompt якщо не змінився ---
+                if buffer == '' and last_prompt != prompt:
+                    print(prompt, end='', flush=True)
+                    last_prompt = prompt
+
+                user_input = ''
+                start = time.time()
+                while time.time() - start < 0.1:
+                    if msvcrt.kbhit():
+                        char = msvcrt.getwche()
+                        if char in ('\r', '\n'):
+                            user_input = buffer
+                            buffer = ''
+                            print()
+                            break
+                        elif char == '\003':
+                            raise KeyboardInterrupt
+                        elif char == '\b':
+                            buffer = buffer[:-1]
+                            print('\b \b', end='', flush=True)
+                        else:
+                            buffer += char
+                    else:
+                        time.sleep(0.01)
+
+                if not user_input:
+                    continue
 
                 # Пріоритет 1: Примусовий напрямок через префікс
                 if user_input.upper().startswith("UA#:") or user_input.upper().startswith("EN#:"):
@@ -356,6 +418,7 @@ class TerminalTranslator:
             except Exception as e:
                 print(f"{Fore.RED}Сталася неочікувана помилка: {e}")
                 self._log_event(f"UNEXPECTED ERROR: {e}")
+                # --- Виправлено: не викликати self._process_translation(user_input) якщо user_input не визначено ---
 
 if __name__ == "__main__":
     translator = TerminalTranslator()
