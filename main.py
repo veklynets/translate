@@ -3,8 +3,8 @@
 # graphic python https://dafarry.github.io/tkinterbook/
 
 from mouse import mouse_position_my, button_of_mouse_my
-from google_translate.logic import logic_stage
-from google_translate.version_python import date
+from logic import logic_stage
+from version_python import date
 import rss_parser
 
 DEBUG = False

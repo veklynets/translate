@@ -1,4 +1,4 @@
-from google_translate.version_python import check_python_version
+from version_python import check_python_version
 import time
 from pynput import mouse
 import pyautogui
