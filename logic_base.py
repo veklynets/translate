@@ -1,8 +1,14 @@
+#https://qna.habr.com/q/1259764
+#https://stackoverflow.com/questions/71814027/how-to-press-enter-using-pyautogui
+# graphic python https://dafarry.github.io/tkinterbook/
+
+import pygame
 import threading
+import asyncio
 from joustick import JoystickHandler
 from translate import TerminalTranslator, Config
 from controle_audio_system import LogicAudioController
-import asyncio
+
     
 joystick_buttons = {
     "sound": 'B1',
@@ -22,16 +28,16 @@ state_buttons = {
     "ZERO": "Z"
 }
 
-class TranslatorWithJoystick:
+class Haupt:
     """
-    Клас-обгортка для запуску TerminalTranslator з підтримкою джойстика.
     """
-    def __init__(self):
+    def __init__(self, DEBUG = False, REAC_SYS = 0.1, DOUBLE_PUSH = 400, screen_position = None):
+        print("Ініціалізація головної програми...")
         self.sound_flag = threading.Event()
         self.translator = TerminalTranslator(config=Config())
         self.translator.sound_flag = self.sound_flag
         self.audio_controller = LogicAudioController()            
-        self.handler = JoystickHandler()
+        self.handler = JoystickHandler(DEBUG=DEBUG)
         self.handler.start()
 
     async def joystick_sound_flag_loop_async(self):
@@ -96,8 +102,10 @@ class TranslatorWithJoystick:
 
     def run(self):
         asyncio.run(self.run_async())
-
+        
+    def shutdown(self):
+        pass
 
 if __name__ == "__main__":
-    api = TranslatorWithJoystick()
+    api = Haupt()
     api.run()

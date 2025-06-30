@@ -1,18 +1,13 @@
-#https://qna.habr.com/q/1259764
-#https://stackoverflow.com/questions/71814027/how-to-press-enter-using-pyautogui
-# graphic python https://dafarry.github.io/tkinterbook/
-
 from mouse import mouse_position_my, button_of_mouse_my
-from logic import logic_stage
+from logic_base import Haupt
 from version_python import date
-import rss_parser
 
 DEBUG = False
 DOUBLE_PUSH = 400 # ms
 REAC_SYS = 0.1  # seconds
 
 
-class start_my(logic_stage):  # or class start_my() ->  logic = logic_stage(DEBUG, REAC_SYS, DOUBLE_PUSH)
+class start_my(Haupt):  # or class start_my() ->  logic = logic_stage(DEBUG, REAC_SYS, DOUBLE_PUSH)
 
     screen_position_multi = {
         'big': { # 3 monitors
@@ -45,9 +40,7 @@ class start_my(logic_stage):  # or class start_my() ->  logic = logic_stage(DEBU
     }
     
     def __init__(self):
-
         date()
-
 
         location_button = input("see location true buttons: write  yes or skip ---> ")
         if 'yes' == location_button: 
@@ -65,15 +58,15 @@ class start_my(logic_stage):  # or class start_my() ->  logic = logic_stage(DEBU
             self.screen_position = self.screen_position_multi['small']
             print(f"selected mode: small") 
         
-        logic_stage.__init__(self, DEBUG=DEBUG, DOUBLE_PUSH=DOUBLE_PUSH,
+        Haupt.__init__(self, DEBUG=DEBUG, DOUBLE_PUSH=DOUBLE_PUSH,
                               REAC_SYS=REAC_SYS, screen_position=self.screen_position)   # super().__init__(DEBUG=DEBUG, DOUBLE_PUSH=DOUBLE_PUSH, REAC_SYS=REAC_SYS):
 
         
     def start(self):
-        self.run_logic()
+        self.run()
 
     def stop(self):
-        self.shutdown_logic()
+        self.shutdown()
 
 
 if __name__ == "__main__":
