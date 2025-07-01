@@ -1,6 +1,7 @@
 from mouse import mouse_position_my, button_of_mouse_my
 from logic_base import Haupt
 from version_python import date
+import gc
 
 DEBUG = False
 DOUBLE_PUSH = 400 # ms
@@ -63,14 +64,24 @@ class start_my(Haupt):  # or class start_my() ->  logic = logic_stage(DEBUG, REA
 
         
     def start(self):
+        print("Start method called")
         self.run()
+        print("Run method finished")
 
     def stop(self):
+        print("Stop method called")
         self.shutdown()
+        print("Shutdown finished")
 
 
 if __name__ == "__main__":
     app = start_my()
-    app.start()
+    try:
+        app.start()
+        print("App start finished")
+    finally:
+        app.stop()
+        gc.collect()
+        print("App stopped and GC collected")
 
 
